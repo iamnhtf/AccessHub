@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AccessHub.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c93ee5d2030d6a3d1641c8ec23c6830f987e0d0f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e7b132fd21a5afd2af05f85c82818ec110cc5335")]
 [assembly: System.Reflection.AssemblyProductAttribute("AccessHub.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AccessHub.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
