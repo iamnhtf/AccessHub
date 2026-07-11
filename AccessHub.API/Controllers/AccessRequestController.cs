@@ -57,4 +57,29 @@ public class AccessRequestsController : ControllerBase
             }
         );
     }
+
+    [Authorize]
+    [HttpGet("my")]
+    public IActionResult GetMyRequests()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null)
+            return Unauthorized();
+
+        var requests = _context
+            .AccessRequests.Where(x => x.RequestedBy == Guid.Parse(userId))
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new AccessRequestResponseDto
+            {
+                Id = x.Id,
+                RequestCode = x.RequestCode,
+                Title = x.Title,
+                Status = x.Status.ToString(),
+                CreatedAt = x.CreatedAt,
+            })
+            .ToList();
+
+        return Ok(requests);
+    }
 }
