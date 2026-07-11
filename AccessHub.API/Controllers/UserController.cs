@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AccessHub.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class UserController : ControllerBase
 {
     [Authorize]

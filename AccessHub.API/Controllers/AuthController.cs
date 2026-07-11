@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace AccessHub.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly AppDbContext _context;
