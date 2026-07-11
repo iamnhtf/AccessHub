@@ -82,4 +82,100 @@ public class AccessRequestsController : ControllerBase
 
         return Ok(requests);
     }
+
+    [Authorize]
+    [HttpGet("pending")]
+    public IActionResult GetPendingRequests()
+    {
+        var requests = _context
+            .AccessRequests.Where(x => x.Status == RequestStatus.PendingApproval)
+            .Join(
+                _context.Users,
+                request => request.RequestedBy,
+                user => user.Id,
+                (request, user) =>
+                    new PendingRequestDto
+                    {
+                        Id = request.Id,
+                        RequestCode = request.RequestCode,
+                        EmployeeName = user.FullName,
+                        Title = request.Title,
+                        Status = request.Status.ToString(),
+                        CreatedAt = request.CreatedAt,
+                    }
+            )
+            .OrderByDescending(x => x.CreatedAt)
+            .ToList();
+
+        return Ok(requests);
+    }
+
+    [Authorize]
+    [HttpPost("{id}/approve")]
+    public async Task<IActionResult> Approve(Guid id, ApproveRequestDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null)
+            return Unauthorized();
+
+        var request = await _context.AccessRequests.FindAsync(id);
+
+        if (request is null)
+            return NotFound();
+
+        request.Status = RequestStatus.Approved;
+        request.UpdatedAt = DateTime.UtcNow;
+
+        var approval = new RequestApproval
+        {
+            Id = Guid.NewGuid(),
+            RequestId = request.Id,
+            ApproverId = Guid.Parse(userId),
+            Decision = "Approved",
+            Comment = dto.Comment,
+            DecisionAt = DateTime.UtcNow,
+        };
+
+        _context.RequestApprovals.Add(approval);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Request approved" });
+    }
+
+    [Authorize]
+    [HttpPost("{id}/reject")]
+    public async Task<IActionResult> Reject(Guid id, RejectRequestDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null)
+            return Unauthorized();
+
+        var request = await _context.AccessRequests.FindAsync(id);
+
+        if (request is null)
+            return NotFound();
+
+        request.Status = RequestStatus.Rejected;
+        request.RejectionReason = dto.Reason;
+        request.UpdatedAt = DateTime.UtcNow;
+
+        var approval = new RequestApproval
+        {
+            Id = Guid.NewGuid(),
+            RequestId = request.Id,
+            ApproverId = Guid.Parse(userId),
+            Decision = "Rejected",
+            Comment = dto.Reason,
+            DecisionAt = DateTime.UtcNow,
+        };
+
+        _context.RequestApprovals.Add(approval);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Request rejected" });
+    }
 }
