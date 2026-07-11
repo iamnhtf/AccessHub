@@ -3,8 +3,10 @@ using AccessHub.API.Data;
 using AccessHub.API.DTOs.AccessRequests;
 using AccessHub.API.Entities;
 using AccessHub.API.Enums;
+using AccessHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AccessHub.API.Controllers;
 
@@ -13,10 +15,12 @@ namespace AccessHub.API.Controllers;
 public class AccessRequestsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly EmailService _emailService;
 
-    public AccessRequestsController(AppDbContext context)
+    public AccessRequestsController(AppDbContext context, EmailService emailService)
     {
         _context = context;
+        _emailService = emailService;
     }
 
     [Authorize(Roles = "Employee")]
@@ -119,7 +123,9 @@ public class AccessRequestsController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
-        var request = await _context.AccessRequests.FindAsync(id);
+        var request = await _context
+            .AccessRequests.Include(x => x.Requester)
+            .FirstOrDefaultAsync(x => x.Id == id);
 
         if (request is null)
             return NotFound();
@@ -146,6 +152,21 @@ public class AccessRequestsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        await _emailService.SendEmailAsync(
+            request.Requester.Email,
+            "Access Request Approved",
+            $"""
+            Hello {request.Requester.FullName},
+
+            Your access request has been approved.
+
+            Request Code: {request.RequestCode}
+            Title: {request.Title}
+
+            Status: Approved
+            """
+        );
+
         return Ok(new { message = "Request approved" });
     }
 
@@ -158,7 +179,9 @@ public class AccessRequestsController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
-        var request = await _context.AccessRequests.FindAsync(id);
+        var request = await _context
+            .AccessRequests.Include(x => x.Requester)
+            .FirstOrDefaultAsync(x => x.Id == id);
 
         if (request is null)
             return NotFound();
@@ -185,6 +208,24 @@ public class AccessRequestsController : ControllerBase
         _context.RequestApprovals.Add(approval);
 
         await _context.SaveChangesAsync();
+
+        await _emailService.SendEmailAsync(
+            request.Requester.Email,
+            "Access Request Rejected",
+            $"""
+            Hello {request.Requester.FullName},
+
+            Your access request has been rejected.
+
+            Request Code: {request.RequestCode}
+            Title: {request.Title}
+
+            Reason:
+            {dto.Reason}
+
+            Status: Rejected
+            """
+        );
 
         return Ok(new { message = "Request rejected" });
     }

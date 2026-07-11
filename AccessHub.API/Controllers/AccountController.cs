@@ -1,6 +1,7 @@
 using AccessHub.API.Data;
 using AccessHub.API.DTOs.Users;
 using AccessHub.API.Entities;
+using AccessHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +13,12 @@ namespace AccessHub.API.Controllers;
 public class AccountController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly EmailService _emailService;
 
-    public AccountController(AppDbContext context)
+    public AccountController(AppDbContext context, EmailService emailService)
     {
         _context = context;
+        _emailService = emailService;
     }
 
     [Authorize(Roles = "Admin")]
@@ -52,9 +55,19 @@ public class AccountController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return Ok(
-            new { Message = "User created successfully", TemporaryPassword = temporaryPassword }
+        await _emailService.SendEmailAsync(
+            dto.Email,
+            "AccessHub Account Created",
+            $"""
+            Welcome to AccessHub
+
+            Email: {dto.Email}
+            Password: {temporaryPassword}
+            Please change your password after first login.
+            """
         );
+
+        return Ok(new { Message = "User created successfully. Credentials sent by email" });
     }
 
     [Authorize(Roles = "Admin")]
