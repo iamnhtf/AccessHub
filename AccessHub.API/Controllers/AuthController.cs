@@ -31,6 +31,11 @@ public class AuthController : ControllerBase
             return Unauthorized("Invalid email or password");
         }
 
+        if (!user.IsActive)
+        {
+            return Unauthorized("Account has been deactivated");
+        }
+
         var isValidPassword = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
 
         if (!isValidPassword)

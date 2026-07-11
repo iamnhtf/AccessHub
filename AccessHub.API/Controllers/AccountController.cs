@@ -1,0 +1,97 @@
+using AccessHub.API.Data;
+using AccessHub.API.DTOs.Users;
+using AccessHub.API.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace AccessHub.API.Controllers;
+
+[ApiController]
+[Route("[controller]")]
+public class AccountController : ControllerBase
+{
+    private readonly AppDbContext _context;
+
+    public AccountController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost]
+    public async Task<IActionResult> CreateUser(CreateUserDto dto)
+    {
+        var existingUser = _context.Users.Any(x => x.Email == dto.Email);
+
+        if (existingUser)
+        {
+            return BadRequest("Email already exists");
+        }
+
+        var role = await _context.Roles.FindAsync(dto.RoleId);
+
+        if (role is null)
+        {
+            return BadRequest("Role not found");
+        }
+
+        const string temporaryPassword = "Temp@123";
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            FullName = dto.FullName,
+            Email = dto.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword),
+            RoleId = dto.RoleId,
+            ManagerId = dto.ManagerId,
+        };
+
+        _context.Users.Add(user);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(
+            new { Message = "User created successfully", TemporaryPassword = temporaryPassword }
+        );
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet]
+    public async Task<IActionResult> GetUsers()
+    {
+        var users = await _context
+            .Users.Include(x => x.Role)
+            .Select(x => new
+            {
+                x.Id,
+                x.FullName,
+                x.Email,
+                Role = x.Role.Name,
+                x.ManagerId,
+                x.IsActive,
+            })
+            .ToListAsync();
+
+        return Ok(users);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id}/deactivate")]
+    public async Task<IActionResult> DeactivateUser(Guid id)
+    {
+        var user = await _context.Users.FindAsync(id);
+
+        if (user is null)
+        {
+            return NotFound("User not found");
+        }
+
+        user.IsActive = false;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { Message = "User deactivated successfully" });
+    }
+}
