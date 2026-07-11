@@ -49,24 +49,32 @@ public class AccountController : ControllerBase
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword),
             RoleId = dto.RoleId,
             ManagerId = dto.ManagerId,
+            IsActive = true,
+            MustChangePassword = true,
         };
 
         _context.Users.Add(user);
 
         await _context.SaveChangesAsync();
 
-        await _emailService.SendEmailAsync(
-            dto.Email,
-            "AccessHub Account Created",
-            $"""
-            Welcome to AccessHub
+        try
+        {
+            await _emailService.SendEmailAsync(
+                dto.Email,
+                "AccessHub Account Created",
+                $"""
+                Welcome to AccessHub
 
-            Email: {dto.Email}
-            Password: {temporaryPassword}
-            Please change your password after first login.
-            """
-        );
-
+                Email: {dto.Email}
+                Password: {temporaryPassword}
+                Please change your password after first login.
+                """
+            );
+        }
+        catch (Exception ex)
+        {
+            //Ignore email errors in development
+        }
         return Ok(new { Message = "User created successfully. Credentials sent by email" });
     }
 

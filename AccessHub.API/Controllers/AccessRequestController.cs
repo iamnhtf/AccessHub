@@ -91,23 +91,27 @@ public class AccessRequestsController : ControllerBase
     [HttpGet("pending")]
     public IActionResult GetPendingRequests()
     {
+        var managerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (managerId is null)
+        {
+            return Unauthorized();
+        }
+
         var requests = _context
-            .AccessRequests.Where(x => x.Status == RequestStatus.PendingApproval)
-            .Join(
-                _context.Users,
-                request => request.RequestedBy,
-                user => user.Id,
-                (request, user) =>
-                    new PendingRequestDto
-                    {
-                        Id = request.Id,
-                        RequestCode = request.RequestCode,
-                        EmployeeName = user.FullName,
-                        Title = request.Title,
-                        Status = request.Status.ToString(),
-                        CreatedAt = request.CreatedAt,
-                    }
+            .AccessRequests.Where(x =>
+                x.Status == RequestStatus.PendingApproval
+                && x.Requester.ManagerId == Guid.Parse(managerId)
             )
+            .Select(x => new PendingRequestDto
+            {
+                Id = x.Id,
+                RequestCode = x.RequestCode,
+                EmployeeName = x.Requester.FullName,
+                Title = x.Title,
+                Status = x.Status.ToString(),
+                CreatedAt = x.CreatedAt,
+            })
             .OrderByDescending(x => x.CreatedAt)
             .ToList();
 

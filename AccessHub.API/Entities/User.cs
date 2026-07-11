@@ -21,6 +21,9 @@ namespace AccessHub.API.Entities
         public ICollection<AccessRequest> Requests { get; set; } = [];
 
         public ICollection<RequestApproval> Approvals { get; set; } = [];
+
         public bool IsActive { get; set; } = true;
+
+        public bool MustChangePassword { get; set; } = true;
     }
 }
