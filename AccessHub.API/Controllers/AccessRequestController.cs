@@ -19,7 +19,7 @@ public class AccessRequestsController : ControllerBase
         _context = context;
     }
 
-    [Authorize]
+    [Authorize(Roles = "Employee")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAccessRequestDto dto)
     {
@@ -58,7 +58,7 @@ public class AccessRequestsController : ControllerBase
         );
     }
 
-    [Authorize]
+    [Authorize(Roles = "Employee")]
     [HttpGet("my")]
     public IActionResult GetMyRequests()
     {
@@ -83,7 +83,7 @@ public class AccessRequestsController : ControllerBase
         return Ok(requests);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Manager")]
     [HttpGet("pending")]
     public IActionResult GetPendingRequests()
     {
@@ -110,7 +110,7 @@ public class AccessRequestsController : ControllerBase
         return Ok(requests);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Manager")]
     [HttpPost("{id}/approve")]
     public async Task<IActionResult> Approve(Guid id, ApproveRequestDto dto)
     {
@@ -123,6 +123,11 @@ public class AccessRequestsController : ControllerBase
 
         if (request is null)
             return NotFound();
+
+        if (request.Status != RequestStatus.PendingApproval)
+        {
+            return BadRequest("Request has already been processed.");
+        }
 
         request.Status = RequestStatus.Approved;
         request.UpdatedAt = DateTime.UtcNow;
@@ -144,7 +149,7 @@ public class AccessRequestsController : ControllerBase
         return Ok(new { message = "Request approved" });
     }
 
-    [Authorize]
+    [Authorize(Roles = "Manager")]
     [HttpPost("{id}/reject")]
     public async Task<IActionResult> Reject(Guid id, RejectRequestDto dto)
     {
@@ -157,6 +162,11 @@ public class AccessRequestsController : ControllerBase
 
         if (request is null)
             return NotFound();
+
+        if (request.Status != RequestStatus.PendingApproval)
+        {
+            return BadRequest("Request has already been processed.");
+        }
 
         request.Status = RequestStatus.Rejected;
         request.RejectionReason = dto.Reason;
