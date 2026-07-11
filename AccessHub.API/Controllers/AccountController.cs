@@ -115,4 +115,39 @@ public class AccountController : ControllerBase
 
         return Ok(new { Message = "User deactivated successfully" });
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id}/reset-password")]
+    public async Task<IActionResult> ResetPassword(Guid id)
+    {
+        var user = await _context.Users.FindAsync(id);
+
+        if (user is null)
+        {
+            return NotFound("User not found");
+        }
+
+        const string temporaryPassword = "Temp@123";
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword);
+
+        user.MustChangePassword = true;
+
+        await _context.SaveChangesAsync();
+
+        await _emailService.SendEmailAsync(
+            user.Email,
+            "AccessHub Password Reset",
+            $"""
+            Your password has been reset.
+
+            Email: {user.Email}
+            Password: {temporaryPassword}
+
+            Please change your password after login.
+            """
+        );
+
+        return Ok(new { Message = "Password reset successfully" });
+    }
 }
