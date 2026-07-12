@@ -15,10 +15,17 @@ public class AccountController : ControllerBase
     private readonly AppDbContext _context;
     private readonly EmailService _emailService;
 
-    public AccountController(AppDbContext context, EmailService emailService)
+    private readonly ILogger<AccountController> _logger;
+
+    public AccountController(
+        AppDbContext context,
+        EmailService emailService,
+        ILogger<AccountController> logger
+    )
     {
         _context = context;
         _emailService = emailService;
+        _logger = logger;
     }
 
     [Authorize(Roles = "Admin")]
@@ -75,6 +82,9 @@ public class AccountController : ControllerBase
         {
             //Ignore email errors in development
         }
+
+        _logger.LogInformation("User {Email} created with role {RoleId}", dto.Email, dto.RoleId);
+
         return Ok(new { Message = "User created successfully. Credentials sent by email" });
     }
 
@@ -113,6 +123,8 @@ public class AccountController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation("User {Email} deactivated", user.Email);
+
         return Ok(new { Message = "User deactivated successfully" });
     }
 
@@ -147,6 +159,8 @@ public class AccountController : ControllerBase
             Please change your password after login.
             """
         );
+
+        _logger.LogWarning("Password reset requested for {Email}", user.Email);
 
         return Ok(new { Message = "Password reset successfully" });
     }

@@ -17,10 +17,17 @@ public class AccessRequestsController : ControllerBase
     private readonly AppDbContext _context;
     private readonly EmailService _emailService;
 
-    public AccessRequestsController(AppDbContext context, EmailService emailService)
+    private readonly ILogger<AccessRequestsController> _logger;
+
+    public AccessRequestsController(
+        AppDbContext context,
+        EmailService emailService,
+        ILogger<AccessRequestsController> logger
+    )
     {
         _context = context;
         _emailService = emailService;
+        _logger = logger;
     }
 
     [Authorize(Roles = "Employee")]
@@ -50,6 +57,12 @@ public class AccessRequestsController : ControllerBase
         _context.AccessRequests.Add(request);
 
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Request {RequestCode} created by user {UserId}",
+            request.RequestCode,
+            userId
+        );
 
         return Ok(
             new
@@ -171,6 +184,12 @@ public class AccessRequestsController : ControllerBase
             """
         );
 
+        _logger.LogInformation(
+            "Request {RequestCode} approved by user {UserId}",
+            request.RequestCode,
+            userId
+        );
+
         return Ok(new { message = "Request approved" });
     }
 
@@ -229,6 +248,12 @@ public class AccessRequestsController : ControllerBase
 
             Status: Rejected
             """
+        );
+
+        _logger.LogWarning(
+            "Request {RequestCode} rejected by manager {ManagerId}",
+            request.RequestCode,
+            userId
         );
 
         return Ok(new { message = "Request rejected" });

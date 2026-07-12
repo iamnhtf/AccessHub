@@ -15,10 +15,17 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _context;
     private readonly JwtService _jwtService;
 
-    public AuthController(AppDbContext context, JwtService jwtService)
+    private readonly ILogger<AuthController> _logger;
+
+    public AuthController(
+        AppDbContext context,
+        JwtService jwtService,
+        ILogger<AuthController> logger
+    )
     {
         _context = context;
         _jwtService = jwtService;
+        _logger = logger;
     }
 
     [HttpPost("login")]
@@ -30,11 +37,15 @@ public class AuthController : ControllerBase
 
         if (user == null)
         {
+            _logger.LogWarning("Login failed. User not found: {Email}", request.Email);
+
             return Unauthorized("Invalid email or password");
         }
 
         if (!user.IsActive)
         {
+            _logger.LogWarning("Login blocked. Account deactivated: {Email}", request.Email);
+
             return Unauthorized("Account has been deactivated");
         }
 
@@ -42,10 +53,14 @@ public class AuthController : ControllerBase
 
         if (!isValidPassword)
         {
+            _logger.LogWarning("Failed login attempt for {Email}", request.Email);
+
             return Unauthorized("Invalid email or password");
         }
 
         var token = await _jwtService.GenerateTokenAsync(user);
+
+        _logger.LogInformation("User {Email} logged in successfully", user.Email);
 
         return Ok(new { token, mustChangePassword = user.MustChangePassword });
     }
