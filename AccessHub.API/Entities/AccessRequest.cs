@@ -27,4 +27,6 @@ public class AccessRequest
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
 }

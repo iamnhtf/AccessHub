@@ -4,6 +4,7 @@ using AccessHub.API.Services;
 using Amazon;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.Runtime;
+using Amazon.S3;
 using Amazon.SimpleSystemsManagement;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -86,6 +87,7 @@ builder.Services.AddScoped<JwtService>();
 builder.Services.AddOpenApi();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<ParameterStoreService>();
+builder.Services.AddScoped<S3Service>();
 builder.Services.AddSingleton<IAmazonSimpleSystemsManagement>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
@@ -95,6 +97,18 @@ builder.Services.AddSingleton<IAmazonSimpleSystemsManagement>(sp =>
         configuration["AWS:SecretKey"]
     );
     return new AmazonSimpleSystemsManagementClient(credentials, RegionEndpoint.APSoutheast1);
+});
+
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+
+    var credentials = new BasicAWSCredentials(
+        configuration["AWS:AccessKey"],
+        configuration["AWS:SecretKey"]
+    );
+
+    return new AmazonS3Client(credentials, RegionEndpoint.APSoutheast1);
 });
 
 var app = builder.Build();

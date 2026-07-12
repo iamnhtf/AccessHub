@@ -19,15 +19,19 @@ public class AccessRequestsController : ControllerBase
 
     private readonly ILogger<AccessRequestsController> _logger;
 
+    private readonly S3Service _s3Service;
+
     public AccessRequestsController(
         AppDbContext context,
         EmailService emailService,
-        ILogger<AccessRequestsController> logger
+        ILogger<AccessRequestsController> logger,
+        S3Service s3Service
     )
     {
         _context = context;
         _emailService = emailService;
         _logger = logger;
+        _s3Service = s3Service;
     }
 
     [Authorize(Roles = "Employee")]
@@ -257,5 +261,76 @@ public class AccessRequestsController : ControllerBase
         );
 
         return Ok(new { message = "Request rejected" });
+    }
+
+    [Authorize(Roles = "Employee")]
+    [HttpPost("{requestId}/attachments")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadAttachment(Guid requestId, IFormFile file)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var request = await _context.AccessRequests.FirstOrDefaultAsync(x => x.Id == requestId);
+
+        if (request is null)
+        {
+            return NotFound("Request not found");
+        }
+
+        if (request.RequestedBy != Guid.Parse(userId))
+        {
+            return Forbid();
+        }
+
+        var key = await _s3Service.UploadFileAsync(file);
+
+        var attachment = new Attachment
+        {
+            Id = Guid.NewGuid(),
+
+            RequestId = requestId,
+
+            FileName = file.FileName,
+
+            S3Key = key,
+
+            UploadedAt = DateTime.UtcNow,
+        };
+
+        _context.Attachments.Add(attachment);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(
+            new
+            {
+                attachment.Id,
+
+                attachment.FileName,
+
+                attachment.S3Key,
+            }
+        );
+    }
+
+    [Authorize(Roles = "Manager,Employee")]
+    [HttpGet("attachments/{attachmentId}")]
+    public async Task<IActionResult> GetAttachment(Guid attachmentId)
+    {
+        var attachment = await _context.Attachments.FirstOrDefaultAsync(x => x.Id == attachmentId);
+
+        if (attachment is null)
+        {
+            return NotFound();
+        }
+
+        var url = _s3Service.GeneratePresignedUrl(attachment.S3Key);
+
+        return Ok(new { attachment.FileName, Url = url });
     }
 }
