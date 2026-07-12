@@ -9,22 +9,26 @@ namespace AccessHub.API.Services;
 public class JwtService
 {
     private readonly IConfiguration _configuration;
+    private readonly ParameterStoreService _parameterStoreService;
 
-    public JwtService(IConfiguration configuration)
+    public JwtService(IConfiguration configuration, ParameterStoreService parameterStoreService)
     {
         _configuration = configuration;
+        _parameterStoreService = parameterStoreService;
     }
 
-    public string GenerateToken(User user)
+    public async Task<string> GenerateTokenAsync(User user)
     {
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Role, user.Role.Name),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role.Name),
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+        var jwtKey = await _parameterStoreService.GetParameterAsync("/accesshub/jwt-key");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

@@ -45,7 +45,7 @@ public class AuthController : ControllerBase
             return Unauthorized("Invalid email or password");
         }
 
-        var token = _jwtService.GenerateToken(user);
+        var token = await _jwtService.GenerateTokenAsync(user);
 
         return Ok(new { token, mustChangePassword = user.MustChangePassword });
     }
