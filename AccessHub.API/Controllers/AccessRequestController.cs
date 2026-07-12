@@ -65,7 +65,7 @@ public class AccessRequestsController : ControllerBase
         _logger.LogInformation(
             "Request {RequestCode} created by user {UserId}",
             request.RequestCode,
-            userId
+            request.RequestedBy
         );
 
         return Ok(
@@ -189,7 +189,7 @@ public class AccessRequestsController : ControllerBase
         );
 
         _logger.LogInformation(
-            "Request {RequestCode} approved by user {UserId}",
+            "Request {RequestCode} approved by manager {ManagerId}",
             request.RequestCode,
             userId
         );
@@ -236,6 +236,12 @@ public class AccessRequestsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        _logger.LogWarning(
+            "Request {RequestCode} rejected by manager {ManagerId}",
+            request.RequestCode,
+            userId
+        );
+
         await _emailService.SendEmailAsync(
             request.Requester.Email,
             "Access Request Rejected",
@@ -252,12 +258,6 @@ public class AccessRequestsController : ControllerBase
 
             Status: Rejected
             """
-        );
-
-        _logger.LogWarning(
-            "Request {RequestCode} rejected by manager {ManagerId}",
-            request.RequestCode,
-            userId
         );
 
         return Ok(new { message = "Request rejected" });
@@ -306,6 +306,12 @@ public class AccessRequestsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation(
+            "Attachment {FileName} uploaded for request {RequestId}",
+            file.FileName,
+            requestId
+        );
+
         return Ok(
             new
             {
@@ -330,6 +336,8 @@ public class AccessRequestsController : ControllerBase
         }
 
         var url = _s3Service.GeneratePresignedUrl(attachment.S3Key);
+
+        _logger.LogInformation("Attachment {AttachmentId} accessed", attachmentId);
 
         return Ok(new { attachment.FileName, Url = url });
     }

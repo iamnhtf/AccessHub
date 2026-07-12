@@ -106,6 +106,8 @@ public class AuthController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation("User {UserId} changed password successfully", userId);
+
         return Ok("Password changed successfully");
     }
 }
